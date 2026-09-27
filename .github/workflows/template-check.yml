@@ -1,0 +1,26 @@
+name: Template check
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  generated-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.1'
+      - id: template
+        uses: tplAIter/tplaiter/.github/actions/template-check@df3f08ee70dace4c6cbafac5e1e7735b0081c42f
+      - name: Test every rendered Go fixture
+        env:
+          RENDER_ROOT: ${{ steps.template.outputs.render-root }}
+        run: |
+          set -euo pipefail
+          for project in "$RENDER_ROOT"/*; do
+            (cd "$project" && go test ./...)
+            (cd "$project" && go build ./...)
+          done
