@@ -1,0 +1,23 @@
+package worker
+
+import "context"
+
+// {{ .Name.Pascal }}Input — вход активности {{ .Name.Pascal }}.
+type {{ .Name.Pascal }}Input struct {
+	// TODO: поля входа.
+}
+
+// {{ .Name.Pascal }}Output — результат активности {{ .Name.Pascal }}.
+type {{ .Name.Pascal }}Output struct {
+	// TODO: поля результата.
+}
+
+// {{ .Name.Pascal }}Activity — тонкая активность {{ .Name.Pascal }}: вызывает use case,
+// маппит результат. Ошибка активности отдаёт решение о повторе retry-политике
+// workflow. Зарегистрируйте её в worker.Register (якорь CODEGEN:WORKERS).
+func {{ .Name.Pascal }}Activity(ctx context.Context, in {{ .Name.Pascal }}Input) ({{ .Name.Pascal }}Output, error) {
+	_ = ctx
+	_ = in
+	// TODO: вызвать use case.
+	return {{ .Name.Pascal }}Output{}, nil
+}

@@ -1,0 +1,25 @@
+# Parca scrape config: pull pprof profiles from the application's net/http/pprof
+# endpoints. Rendered from parca.yml.tmpl (needs .Runtime.Port) and mounted into
+# the parca container (parca profile). No application SDK is required — Parca
+# scrapes the standard Go /debug/pprof handlers.
+object_storage:
+  bucket:
+    type: "FILESYSTEM"
+    config:
+      directory: "./data"
+
+scrape_configs:
+  - job_name: "{{ .Project.Slug }}"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["host.docker.internal:{{ .Runtime.Port }}"]
+        labels:
+          stack: "go"
+    profiling_config:
+      pprof_config:
+        block:
+          enabled: true
+        goroutine:
+          enabled: true
+        mutex:
+          enabled: true

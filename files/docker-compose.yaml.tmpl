@@ -1,0 +1,35 @@
+# docker-compose локальной разработки {{ .Project.Name }}.
+#
+# Файл СОБИРАЕТСЯ из фрагментов templates/service/partials/fragment-*.yaml.tmpl
+# при генерации (см. docs/monitoring.md репозитория go-template). Всегда
+# включены: backend, prometheus, grafana, node-exporter; фичи добавляют свои
+# сервисы; опциональные стеки включаются профилями:
+# docker compose --profile obs|elk|pyroscope|parca|graylog up.
+name: {{ .Project.Slug }}
+
+services:
+{{- if is "database" "postgres" }}
+{{ template "compose.postgresql" . }}
+{{- end }}
+{{- if .Settings.cache }}
+{{ template "compose.redis" . }}
+{{- end }}
+{{- if has "brokers" "kafka" }}
+{{ template "compose.kafka" . }}
+{{- end }}
+{{- if has "brokers" "rabbitmq" }}
+{{ template "compose.rabbitmq" . }}
+{{- end }}
+{{- if .Settings.storage }}
+{{ template "compose.minio" . }}
+{{- end }}
+{{- if .Settings.workflow }}
+{{ template "compose.temporal" . }}
+{{- end }}
+{{ template "compose.prometheus" . }}
+{{ template "compose.grafana" . }}
+{{ template "compose.node-exporter" . }}
+{{ template "compose.loki" . }}
+{{ template "compose.alloy" . }}
+{{ template "compose.pyroscope" . }}
+{{ template "compose.parca" . }}

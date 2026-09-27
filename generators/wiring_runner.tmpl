@@ -1,0 +1,6 @@
+{{ .Marker }}
+		{{ .Name.Camel }}Runner, err := apprunner.New{{ .Name.Pascal }}Runner(logger)
+		if err != nil {
+			return nil, fmt.Errorf("app: {{ .Name.Kebab }} runner: %w", err)
+		}
+		runners = append(runners, {{ .Name.Camel }}Runner)

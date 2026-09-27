@@ -1,0 +1,55 @@
+// Package worker содержит Temporal-активности и workflow-заготовки сервиса.
+//
+// Конвенции монорепо (a standalone workflow activity): 1 сервис = 1 task queue; activity — тонкая
+// (вызывает use case, никакой бизнес-логики внутри); workflow — только
+// оркестрация (никакого IO); версионирование workflow — через workflow.GetVersion.
+package worker
+
+import (
+	"context"
+	"fmt"
+
+	"{{ .Project.Module }}/internal/usecase"
+)
+
+// CreateExampleInput — вход активности CreateExample.
+type CreateExampleInput struct {
+	Name  string
+	Email string
+}
+
+// CreateExampleOutput — результат активности CreateExample.
+type CreateExampleOutput struct {
+	ID            string
+	AlreadyExists bool
+}
+
+// ExampleActivities — группа активностей вертикали Example.
+type ExampleActivities struct {
+	createExample *usecase.CreateExampleUseCase
+}
+
+// NewExampleActivities собирает активности поверх use case'ов.
+func NewExampleActivities(createExample *usecase.CreateExampleUseCase) *ExampleActivities {
+	return &ExampleActivities{createExample: createExample}
+}
+
+// CreateExample — тонкая активность: вызов use case + маппинг результата.
+// Ошибка активности отдаёт решение о повторе retry-политике workflow.
+func (a *ExampleActivities) CreateExample(ctx context.Context, in CreateExampleInput) (CreateExampleOutput, error) {
+	resp := a.createExample.Execute(ctx, usecase.CreateExampleRequest{
+		Name:  in.Name,
+		Email: in.Email,
+	})
+
+	switch resp.Code {
+	case usecase.CreateExampleOK:
+		return CreateExampleOutput{ID: resp.Result.ID}, nil
+	case usecase.CreateExampleAlreadyExists:
+		return CreateExampleOutput{ID: resp.Result.ID, AlreadyExists: true}, nil
+	case usecase.CreateExampleInvalid, usecase.CreateExampleRateLimited, usecase.CreateExampleError:
+		return CreateExampleOutput{}, fmt.Errorf("create example activity: code %d", resp.Code)
+	default:
+		return CreateExampleOutput{}, fmt.Errorf("create example activity: unexpected code %d", resp.Code)
+	}
+}

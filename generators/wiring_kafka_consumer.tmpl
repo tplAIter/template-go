@@ -1,0 +1,5 @@
+{{ .Marker }}
+	// TODO: зарегистрируйте {{ .Name.Pascal }}Consumer в блоке kafka mode выше:
+	//   consumer, err := kafka.NewConsumer(cfg.Kafka.Build(), logger, []string{topic},
+	//       kafkaapi.New{{ .Name.Pascal }}Consumer(logger), kafka.WithMiddlewares(consumerMWs...))
+	//   a.kafkaConsumers = append(a.kafkaConsumers, consumer)

@@ -1,0 +1,68 @@
+// Package tests содержит юнит- и e2e-тесты сервиса {{ .Project.Name }}.
+//
+// Юнит-тесты гоняют use case через настоящий in-memory адаптер (не мок), проверяя
+// доменную логику без инфраструктуры. e2e-тесты (e2e_test.go) поднимают прод-фабрику
+// app.New через httptest.
+package tests
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"testing"
+
+	"{{ .Project.Module }}/internal/infra/memory"
+	"{{ .Project.Module }}/internal/usecase"
+)
+
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func TestCreateExampleUseCase(t *testing.T) {
+	tests := []struct {
+		name     string
+		seedSame bool
+		req      usecase.CreateExampleRequest
+		wantCode usecase.CreateExampleCode
+	}{
+		{
+			name:     "valid creates",
+			req:      usecase.CreateExampleRequest{Name: "Alice", Email: "alice@example.com"},
+			wantCode: usecase.CreateExampleOK,
+		},
+		{
+			name:     "duplicate email",
+			seedSame: true,
+			req:      usecase.CreateExampleRequest{Name: "Bob", Email: "bob@example.com"},
+			wantCode: usecase.CreateExampleAlreadyExists,
+		},
+		{
+			name:     "invalid email",
+			req:      usecase.CreateExampleRequest{Name: "Carol", Email: "not-an-email"},
+			wantCode: usecase.CreateExampleInvalid,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := memory.NewExampleRepo()
+			uc := usecase.NewCreateExampleUseCase(repo, testLogger())
+			ctx := context.Background()
+
+			if tc.seedSame {
+				if got := uc.Execute(ctx, tc.req); got.Code != usecase.CreateExampleOK {
+					t.Fatalf("seed create code = %v, want OK", got.Code)
+				}
+			}
+
+			resp := uc.Execute(ctx, tc.req)
+			if resp.Code != tc.wantCode {
+				t.Fatalf("code = %v, want %v", resp.Code, tc.wantCode)
+			}
+			if resp.Code == usecase.CreateExampleOK && resp.Result == nil {
+				t.Error("expected non-nil result on success")
+			}
+		})
+	}
+}

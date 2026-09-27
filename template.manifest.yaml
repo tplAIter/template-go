@@ -1,0 +1,40 @@
+apiVersion: tplater.dev/v1alpha1
+kind: Template
+metadata:
+  name: go-service
+  version: 0.0.0-local
+  description: Go service template checkpoint with neutral retained render assets.
+engine:
+  type: gotemplate
+  root: files
+settings:
+  - group: database
+    title: Database
+    type: select
+    default: none
+    options:
+      - id: none
+        title: No database
+      - id: postgres
+        title: PostgreSQL
+  - group: brokers
+    title: Message brokers
+    type: multiselect
+    default: []
+    options:
+      - id: kafka
+        title: Kafka
+      - id: rabbitmq
+        title: RabbitMQ
+  - group: cache
+    title: Redis cache
+    type: toggle
+    default: false
+  - group: storage
+    title: Object storage
+    type: toggle
+    default: false
+  - group: workflow
+    title: Background workflows
+    type: toggle
+    default: false

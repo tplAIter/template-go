@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: go-service API
+  description: >-
+    Минимальный OpenAPI-контракт пилота внешних генераторов (the selected OpenAPI server mode
+    с example-вертикалью go-service (те же поля name/email).
+  version: 1.0.0
+paths:
+  /api/v1/examples:
+    post:
+      operationId: createExample
+      summary: Создать пример
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExampleRequest"
+      responses:
+        "201":
+          description: Пример создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExampleEnvelope"
+        "409":
+          description: Пример с таким email уже существует
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExampleEnvelope"
+        "422":
+          description: Некорректные входные данные
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExampleEnvelope"
+        "429":
+          description: Превышен лимит создания
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExampleEnvelope"
+        "500":
+          description: Внутренняя ошибка
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExampleEnvelope"
+  /healthcheck:
+    get:
+      operationId: getHealthcheck
+      summary: Проверка состояния сервиса
+      description: >-
+        Документирован для полноты контракта; на mux обслуживается нативным        healthcheck handler,
+        поэтому ответ здесь — только для контракта, а не для реального рантайма.
+      responses:
+        "200":
+          description: Сервис здоров
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthcheckResponse"
+components:
+  schemas:
+    CreateExampleRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+    ExampleResult:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+    ExampleEnvelope:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        result:
+          $ref: "#/components/schemas/ExampleResult"
+    HealthcheckResponse:
+      type: object
+      properties:
+        status:
+          type: object
+          additionalProperties:
+            type: boolean

@@ -1,0 +1,29 @@
+# Filebeat config: ship docker container JSON logs (stdout/stderr) to Elasticsearch.
+# Mounted read-only into the filebeat container (elk profile).
+
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      templates:
+        - config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+
+processors:
+  - add_docker_metadata: ~
+  - add_fields:
+      target: ""
+      fields:
+        stack: go
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+
+setup.template.name: "filebeat"
+setup.template.pattern: "filebeat-*"
+setup.ilm.enabled: false
+
+logging.level: info

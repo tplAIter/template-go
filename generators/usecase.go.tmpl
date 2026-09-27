@@ -1,0 +1,53 @@
+// Package usecase содержит бизнес-сценарии сервиса.
+package usecase
+
+import (
+	"context"
+	"log/slog"
+)
+
+// {{ .Name.Pascal }}Request — входные данные сценария {{ .Name.Pascal }}.
+type {{ .Name.Pascal }}Request struct {
+	// TODO: поля запроса.
+}
+
+// {{ .Name.Pascal }}Result — полезная нагрузка успешного ответа.
+type {{ .Name.Pascal }}Result struct {
+	// TODO: поля результата.
+}
+
+// {{ .Name.Pascal }}Code — доменный код результата (развязан от HTTP-статуса).
+type {{ .Name.Pascal }}Code int
+
+const (
+	// {{ .Name.Pascal }}OK — успешное выполнение.
+	{{ .Name.Pascal }}OK {{ .Name.Pascal }}Code = iota
+	// {{ .Name.Pascal }}Invalid — входные данные не прошли валидацию.
+	{{ .Name.Pascal }}Invalid
+	// {{ .Name.Pascal }}Error — внутренняя ошибка.
+	{{ .Name.Pascal }}Error
+)
+
+// {{ .Name.Pascal }}Response — доменный ответ сценария.
+type {{ .Name.Pascal }}Response struct {
+	Code   {{ .Name.Pascal }}Code
+	Result *{{ .Name.Pascal }}Result
+}
+
+// {{ .Name.Pascal }}UseCase — сценарий {{ .Name.Pascal }}.
+type {{ .Name.Pascal }}UseCase struct {
+	logger *slog.Logger
+}
+
+// New{{ .Name.Pascal }}UseCase собирает сценарий. logger обязателен.
+func New{{ .Name.Pascal }}UseCase(logger *slog.Logger) *{{ .Name.Pascal }}UseCase {
+	return &{{ .Name.Pascal }}UseCase{logger: logger}
+}
+
+// Execute — публичная точка входа сценария {{ .Name.Pascal }}.
+func (uc *{{ .Name.Pascal }}UseCase) Execute(ctx context.Context, req {{ .Name.Pascal }}Request) {{ .Name.Pascal }}Response {
+	_ = ctx
+	_ = req
+	// TODO: реализовать сценарий (валидация → бизнес-логика → результат).
+	return {{ .Name.Pascal }}Response{Code: {{ .Name.Pascal }}OK}
+}

@@ -1,0 +1,80 @@
+# golangci-lint config сервиса (schema v2, как в go-template, без template-специфики).
+# Требуется golangci-lint >= v2 (`golangci-lint run`).
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  # standard = errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  enable:
+    - asasalint      # передача []any в вариативный any
+    - asciicheck     # запрет non-ASCII идентификаторов
+    - bidichk        # опасные unicode bidi-последовательности
+    - bodyclose      # незакрытый resp.Body
+    - contextcheck   # корректная передача context
+    - copyloopvar    # переменная цикла (Go 1.22+)
+    - depguard       # запрет нежелательных зависимостей
+    - dupword        # повтор слов ("the the")
+    - durationcheck  # умножение двух time.Duration
+    - errname        # именование ошибок (Err..., ...Error)
+    - errorlint      # корректная работа с обёрнутыми ошибками (%w, errors.As/Is)
+    - exhaustive     # полнота switch по enum
+    - gocheckcompilerdirectives # валидность //go: директив
+    - gocritic       # набор диагностик
+    - gosec          # проверки безопасности
+    - loggercheck    # парность ключ-значение в slog
+    - makezero       # make([]T, len) + append
+    - misspell       # опечатки в комментариях
+    - nakedret       # запрет naked return в длинных функциях
+    - nilerr         # return nil при ненулевой ошибке
+    - noctx          # http-запрос без context
+    - nolintlint     # корректные //nolint директивы
+    - perfsprint     # fmt.Sprintf там, где хватит strconv
+    - prealloc       # преаллокация слайсов в циклах
+    - predeclared    # затенение предопределённых идентификаторов
+    - reassign       # переопределение переменных пакетов
+    - revive         # расширенный набор стилевых правил
+    - rowserrcheck   # sql.Rows.Err()
+    - sqlclosecheck  # закрытие sql.Rows/Stmt
+    - unconvert      # лишние конверсии типов
+    - unparam        # неиспользуемые параметры
+    - usestdlibvars  # использование stdlib-констант (http.StatusOK и т.п.)
+    - wastedassign   # бесполезные присваивания
+    - whitespace     # лишние пустые строки
+
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: io/ioutil
+              desc: устарело; используйте io и os.
+            - pkg: github.com/pkg/errors
+              desc: используйте стандартные errors и fmt.Errorf с %w.
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      # В тестах допускаем менее строгие проверки.
+      - path: _test\.go
+        linters:
+          - dupl
+          - gosec
+          - noctx
+      # doc.go-заглушки не нуждаются в проверках.
+      - path: doc\.go
+        linters:
+          - revive
+
+formatters:
+  enable:
+    - gofumpt   # строгий формат-надстройка над gofmt
+    - goimports # группировка и порядок импортов

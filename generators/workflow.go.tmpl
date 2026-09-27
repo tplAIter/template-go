@@ -1,0 +1,33 @@
+package worker
+
+import (
+	"time"
+
+	"go.temporal.io/sdk/workflow"
+)
+
+// {{ .Name.Pascal }}WorkflowInput — вход workflow {{ .Name.Pascal }}.
+type {{ .Name.Pascal }}WorkflowInput struct {
+	// TODO: поля входа.
+}
+
+// {{ .Name.Pascal }}WorkflowResult — результат workflow {{ .Name.Pascal }}.
+type {{ .Name.Pascal }}WorkflowResult struct {
+	// TODO: поля результата.
+}
+
+// {{ .Name.Pascal }}Workflow — заготовка workflow {{ .Name.Pascal }} (только оркестрация).
+//
+// Правила workflow-кода: только детерминированная оркестрация (никакого IO,
+// времени через time.Now, случайности); при изменении ЛОГИКИ уже запущенных
+// workflow используйте workflow.GetVersion для ветвления. Зарегистрируйте
+// workflow в worker.Register (якорь CODEGEN:WORKERS).
+func {{ .Name.Pascal }}Workflow(ctx workflow.Context, in {{ .Name.Pascal }}WorkflowInput) ({{ .Name.Pascal }}WorkflowResult, error) {
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		StartToCloseTimeout: time.Minute,
+	})
+	_ = ctx
+	_ = in
+	// TODO: оркестрация активностей через workflow.ExecuteActivity.
+	return {{ .Name.Pascal }}WorkflowResult{}, nil
+}
