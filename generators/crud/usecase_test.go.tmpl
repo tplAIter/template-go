@@ -8,8 +8,9 @@ import (
 	"testing"
 )
 
-// inMem{{ .Name.Pascal }}Repo — самодостаточный in-memory стаб {{ .Name.Pascal }}Repository для
-// табличных тестов (moq-мок доступен через `go generate ./internal/usecase/`).
+// inMem{{ .Name.Pascal }}Repo — self-contained in-memory stub for
+// {{ .Name.Pascal }}Repository in table tests (a moq mock is available through
+// `go generate ./internal/usecase/`).
 type inMem{{ .Name.Pascal }}Repo struct {
 	mu    sync.Mutex
 	items map[string]{{ .Name.Pascal }}Entity

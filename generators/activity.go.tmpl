@@ -2,22 +2,22 @@ package worker
 
 import "context"
 
-// {{ .Name.Pascal }}Input — вход активности {{ .Name.Pascal }}.
+// {{ .Name.Pascal }}Input — input for the {{ .Name.Pascal }} activity.
 type {{ .Name.Pascal }}Input struct {
-	// TODO: поля входа.
+	// TODO: input fields.
 }
 
-// {{ .Name.Pascal }}Output — результат активности {{ .Name.Pascal }}.
+// {{ .Name.Pascal }}Output — result of the {{ .Name.Pascal }} activity.
 type {{ .Name.Pascal }}Output struct {
-	// TODO: поля результата.
+	// TODO: result fields.
 }
 
-// {{ .Name.Pascal }}Activity — тонкая активность {{ .Name.Pascal }}: вызывает use case,
-// маппит результат. Ошибка активности отдаёт решение о повторе retry-политике
-// workflow. Зарегистрируйте её в worker.Register (якорь CODEGEN:WORKERS).
+// {{ .Name.Pascal }}Activity — thin {{ .Name.Pascal }} activity: calls the use
+// case and maps the result. An activity error lets the workflow retry policy
+// decide whether to retry. Register it in worker.Register (CODEGEN:WORKERS anchor).
 func {{ .Name.Pascal }}Activity(ctx context.Context, in {{ .Name.Pascal }}Input) ({{ .Name.Pascal }}Output, error) {
 	_ = ctx
 	_ = in
-	// TODO: вызвать use case.
+	// TODO: call the use case.
 	return {{ .Name.Pascal }}Output{}, nil
 }

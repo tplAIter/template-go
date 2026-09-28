@@ -1,9 +1,9 @@
-# docker-compose локальной разработки {{ .Project.Name }}.
+# docker-compose for local development of {{ .Project.Name }}.
 #
-# Файл СОБИРАЕТСЯ из фрагментов templates/service/partials/fragment-*.yaml.tmpl
-# при генерации (см. docs/monitoring.md репозитория go-template). Всегда
-# включены: backend, prometheus, grafana, node-exporter; фичи добавляют свои
-# сервисы; опциональные стеки включаются профилями:
+# The file is ASSEMBLED from templates/service/partials/fragment-*.yaml.tmpl
+# during generation (see docs/monitoring.md in the go-template repository).
+# backend, prometheus, grafana, and node-exporter are always included; features
+# add their own services, while optional stacks are enabled through profiles:
 # docker compose --profile obs|elk|pyroscope|parca|graylog up.
 name: {{ .Project.Slug }}
 

@@ -1,5 +1,5 @@
-# golangci-lint config сервиса (schema v2, как в go-template, без template-специфики).
-# Требуется golangci-lint >= v2 (`golangci-lint run`).
+# Service golangci-lint configuration (schema v2, as in go-template, without
+# template-specific settings). Requires golangci-lint >= v2 (`golangci-lint run`).
 version: "2"
 
 run:
@@ -22,7 +22,7 @@ linters:
     - errname        # именование ошибок (Err..., ...Error)
     - errorlint      # корректная работа с обёрнутыми ошибками (%w, errors.As/Is)
     - exhaustive     # полнота switch по enum
-    - gocheckcompilerdirectives # валидность //go: директив
+    - gocheckcompilerdirectives # validate //go: directives
     - gocritic       # набор диагностик
     - gosec          # проверки безопасности
     - loggercheck    # парность ключ-значение в slog
@@ -31,7 +31,7 @@ linters:
     - nakedret       # запрет naked return в длинных функциях
     - nilerr         # return nil при ненулевой ошибке
     - noctx          # http-запрос без context
-    - nolintlint     # корректные //nolint директивы
+    - nolintlint     # valid //nolint directives
     - perfsprint     # fmt.Sprintf там, где хватит strconv
     - prealloc       # преаллокация слайсов в циклах
     - predeclared    # затенение предопределённых идентификаторов
@@ -63,13 +63,13 @@ linters:
       - legacy
       - std-error-handling
     rules:
-      # В тестах допускаем менее строгие проверки.
+      # Allow less strict checks in tests.
       - path: _test\.go
         linters:
           - dupl
           - gosec
           - noctx
-      # doc.go-заглушки не нуждаются в проверках.
+      # doc.go stubs do not need checks.
       - path: doc\.go
         linters:
           - revive

@@ -1,8 +1,9 @@
-// Package memory содержит in-memory реализации портов хранилища.
+// Package memory contains in-memory implementations of storage ports.
 //
-// Используется в конфигурациях без PostgreSQL и в юнит-тестах как «настоящий»
-// адаптер (вместо мока): та же семантика lock → read → write, но на map под
-// мьютексом. Продовый адаптер поверх gocore/postgres реализует те же порты.
+// Used in configurations without PostgreSQL and in unit tests as a real adapter
+// (rather than a mock): the same lock → read → write semantics, backed by a map
+// protected by a mutex. The production gocore/postgres adapter implements the
+// same ports.
 package memory
 
 import (
@@ -13,28 +14,29 @@ import (
 	"{{ .Project.Module }}/internal/usecase"
 )
 
-// ExampleRepo — потокобезопасное in-memory хранилище примеров.
+// ExampleRepo — thread-safe in-memory example store.
 type ExampleRepo struct {
 	mu      sync.Mutex
 	byEmail map[string]usecase.ExampleEntity
 }
 
-// NewExampleRepo создаёт пустой репозиторий.
+// NewExampleRepo creates an empty repository.
 func NewExampleRepo() *ExampleRepo {
 	return &ExampleRepo{byEmail: make(map[string]usecase.ExampleEntity)}
 }
 
-// WithinTx сериализует сценарий под мьютексом (аналог транзакции + advisory-лока).
+// WithinTx serializes a use case under the mutex (the equivalent of a
+// transaction plus an advisory lock).
 func (r *ExampleRepo) WithinTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return fn(ctx)
 }
 
-// LockByEmail — no-op: сериализацию обеспечивает мьютекс WithinTx.
+// LockByEmail — no-op: WithinTx's mutex provides serialization.
 func (r *ExampleRepo) LockByEmail(_ context.Context, _ string) error { return nil }
 
-// FindByEmail возвращает запись или (nil, nil).
+// FindByEmail returns a record or (nil, nil).
 func (r *ExampleRepo) FindByEmail(_ context.Context, email string) (*usecase.ExampleEntity, error) {
 	if e, ok := r.byEmail[email]; ok {
 		clone := e
@@ -43,7 +45,7 @@ func (r *ExampleRepo) FindByEmail(_ context.Context, email string) (*usecase.Exa
 	return nil, nil
 }
 
-// CountCreatedSince считает записи, созданные не раньше t.
+// CountCreatedSince counts records created no earlier than t.
 func (r *ExampleRepo) CountCreatedSince(_ context.Context, t time.Time) (int64, error) {
 	var n int64
 	for _, e := range r.byEmail {
@@ -54,7 +56,7 @@ func (r *ExampleRepo) CountCreatedSince(_ context.Context, t time.Time) (int64, 
 	return n, nil
 }
 
-// Create сохраняет новую запись.
+// Create stores a new record.
 func (r *ExampleRepo) Create(_ context.Context, entity *usecase.ExampleEntity) error {
 	r.byEmail[entity.Email] = *entity
 	return nil

@@ -1,6 +1,7 @@
-// Package domain — заготовка слоя чистых доменных сущностей и правил.
+// Package domain — scaffold for pure domain entities and rules.
 //
-// Здесь размещаются типы, не зависящие от инфраструктуры (БД, транспорт, брокеры).
-// В стартовой вертикали Example доменная модель минимальна и живёт рядом с use
-// case (usecase.ExampleEntity); по мере роста домена переносите инварианты сюда.
+// This package contains types independent of infrastructure (database, transport,
+// brokers). In the starter Example vertical the domain model is minimal and
+// lives beside the use case (usecase.ExampleEntity); move invariants here as the
+// domain grows.
 package domain

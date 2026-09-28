@@ -1,8 +1,8 @@
-// Package tests содержит юнит- и e2e-тесты сервиса {{ .Project.Name }}.
+// Package tests contains unit and e2e tests for service {{ .Project.Name }}.
 //
-// Юнит-тесты гоняют use case через настоящий in-memory адаптер (не мок), проверяя
-// доменную логику без инфраструктуры. e2e-тесты (e2e_test.go) поднимают прод-фабрику
-// app.New через httptest.
+// Unit tests run the use case through a real in-memory adapter (not a mock),
+// checking domain logic without infrastructure. e2e tests (e2e_test.go) start
+// the production app.New factory through httptest.
 package tests
 
 import (

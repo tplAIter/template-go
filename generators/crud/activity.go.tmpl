@@ -21,7 +21,7 @@ import (
 	"{{ .Project.Module }}/internal/usecase"
 )
 
-// Create{{ .Name.Pascal }}Input — вход активности создания {{ .Name.Pascal }}.
+// Create{{ .Name.Pascal }}Input — input for the {{ .Name.Pascal }} creation activity.
 type Create{{ .Name.Pascal }}Input struct {
 {{ $nullableFields := index .Params "nullable-fields" -}}
 {{ range .Fields }}
@@ -32,42 +32,42 @@ type Create{{ .Name.Pascal }}Input struct {
 {{ end }}
 }
 
-// Create{{ .Name.Pascal }}Output — результат активности создания {{ .Name.Pascal }}.
+// Create{{ .Name.Pascal }}Output — result of the {{ .Name.Pascal }} creation activity.
 type Create{{ .Name.Pascal }}Output struct {
 	ID string
 }
 
-// Get{{ .Name.Pascal }}Input — вход активности чтения {{ .Name.Pascal }}.
+// Get{{ .Name.Pascal }}Input — input for the {{ .Name.Pascal }} read activity.
 type Get{{ .Name.Pascal }}Input struct {
 	ID string
 }
 
-// Get{{ .Name.Pascal }}Output — результат активности чтения {{ .Name.Pascal }}.
+// Get{{ .Name.Pascal }}Output — result of the {{ .Name.Pascal }} read activity.
 type Get{{ .Name.Pascal }}Output struct {
 	ID    string
 	Found bool
 }
 
-// {{ .Name.Pascal }}Activities — группа активностей CRUD-вертикали {{ .Name.Pascal }}.
-// Тонкие обёртки над use case'ами (никакой бизнес-логики внутри).
+// {{ .Name.Pascal }}Activities — activities for the {{ .Name.Pascal }} CRUD vertical.
+// Thin wrappers around use cases (no business logic inside).
 type {{ .Name.Pascal }}Activities struct {
 	create *usecase.Create{{ .Name.Pascal }}UseCase
 	get    *usecase.Get{{ .Name.Pascal }}UseCase
 }
 
-// New{{ .Name.Pascal }}Activities собирает активности поверх use case'ов.
+// New{{ .Name.Pascal }}Activities builds activities around the use cases.
 func New{{ .Name.Pascal }}Activities(create *usecase.Create{{ .Name.Pascal }}UseCase, get *usecase.Get{{ .Name.Pascal }}UseCase) *{{ .Name.Pascal }}Activities {
 	return &{{ .Name.Pascal }}Activities{create: create, get: get}
 }
 
-// Register{{ .Name.Pascal }}Activities регистрирует активности вертикали {{ .Name.Pascal }} на воркере.
-// Вызывается из composition root (см. anchor CODEGEN:WORKER_REGISTER в internal/app).
+// Register{{ .Name.Pascal }}Activities registers the {{ .Name.Pascal }} activities
+// on a worker. Called from the composition root (see CODEGEN:WORKER_REGISTER in internal/app).
 func Register{{ .Name.Pascal }}Activities(w worker.Worker, a *{{ .Name.Pascal }}Activities) {
 	w.RegisterActivity(a.Create)
 	w.RegisterActivity(a.Get)
 }
 
-// Create — тонкая активность создания: вызов use case + маппинг результата.
+// Create — thin creation activity: call the use case and map the result.
 func (a *{{ .Name.Pascal }}Activities) Create(ctx context.Context, in Create{{ .Name.Pascal }}Input) (Create{{ .Name.Pascal }}Output, error) {
 	resp := a.create.Execute(ctx, usecase.Create{{ .Name.Pascal }}Request{
 {{- range .Fields }}
@@ -84,7 +84,7 @@ func (a *{{ .Name.Pascal }}Activities) Create(ctx context.Context, in Create{{ .
 	}
 }
 
-// Get — тонкая активность чтения: вызов use case + маппинг результата.
+// Get — thin read activity: call the use case and map the result.
 func (a *{{ .Name.Pascal }}Activities) Get(ctx context.Context, in Get{{ .Name.Pascal }}Input) (Get{{ .Name.Pascal }}Output, error) {
 	resp := a.get.Execute(ctx, usecase.Get{{ .Name.Pascal }}Request{ID: in.ID})
 	switch resp.Code {

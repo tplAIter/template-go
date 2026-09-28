@@ -10,11 +10,11 @@ import (
 )
 
 func TestEchoClientEcho(t *testing.T) {
-	// Стаб внешнего сервиса через httptest — подход тестирования на границе.
+	// External-service stub through httptest — testing at the boundary.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body) // эхо: возвращаем то же тело {"message": ...}
+		_, _ = w.Write(body) // echo: return the same {"message": ...} body
 	}))
 	defer srv.Close()
 

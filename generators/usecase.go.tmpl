@@ -1,4 +1,4 @@
-// Package usecase содержит бизнес-сценарии сервиса.
+// Package usecase contains the service's business use cases.
 package usecase
 
 import (
@@ -6,48 +6,48 @@ import (
 	"log/slog"
 )
 
-// {{ .Name.Pascal }}Request — входные данные сценария {{ .Name.Pascal }}.
+// {{ .Name.Pascal }}Request — input data for the {{ .Name.Pascal }} use case.
 type {{ .Name.Pascal }}Request struct {
-	// TODO: поля запроса.
+	// TODO: request fields.
 }
 
-// {{ .Name.Pascal }}Result — полезная нагрузка успешного ответа.
+// {{ .Name.Pascal }}Result — payload of a successful response.
 type {{ .Name.Pascal }}Result struct {
-	// TODO: поля результата.
+	// TODO: result fields.
 }
 
-// {{ .Name.Pascal }}Code — доменный код результата (развязан от HTTP-статуса).
+// {{ .Name.Pascal }}Code — domain result code (independent of HTTP status).
 type {{ .Name.Pascal }}Code int
 
 const (
-	// {{ .Name.Pascal }}OK — успешное выполнение.
+// {{ .Name.Pascal }}OK — successful execution.
 	{{ .Name.Pascal }}OK {{ .Name.Pascal }}Code = iota
-	// {{ .Name.Pascal }}Invalid — входные данные не прошли валидацию.
+// {{ .Name.Pascal }}Invalid — input data failed validation.
 	{{ .Name.Pascal }}Invalid
-	// {{ .Name.Pascal }}Error — внутренняя ошибка.
+// {{ .Name.Pascal }}Error — internal error.
 	{{ .Name.Pascal }}Error
 )
 
-// {{ .Name.Pascal }}Response — доменный ответ сценария.
+// {{ .Name.Pascal }}Response — domain response of the use case.
 type {{ .Name.Pascal }}Response struct {
 	Code   {{ .Name.Pascal }}Code
 	Result *{{ .Name.Pascal }}Result
 }
 
-// {{ .Name.Pascal }}UseCase — сценарий {{ .Name.Pascal }}.
+// {{ .Name.Pascal }}UseCase — the {{ .Name.Pascal }} use case.
 type {{ .Name.Pascal }}UseCase struct {
 	logger *slog.Logger
 }
 
-// New{{ .Name.Pascal }}UseCase собирает сценарий. logger обязателен.
+// New{{ .Name.Pascal }}UseCase builds the use case. logger is required.
 func New{{ .Name.Pascal }}UseCase(logger *slog.Logger) *{{ .Name.Pascal }}UseCase {
 	return &{{ .Name.Pascal }}UseCase{logger: logger}
 }
 
-// Execute — публичная точка входа сценария {{ .Name.Pascal }}.
+// Execute — public entry point for the {{ .Name.Pascal }} use case.
 func (uc *{{ .Name.Pascal }}UseCase) Execute(ctx context.Context, req {{ .Name.Pascal }}Request) {{ .Name.Pascal }}Response {
 	_ = ctx
 	_ = req
-	// TODO: реализовать сценарий (валидация → бизнес-логика → результат).
+	// TODO: implement the use case (validation → business logic → result).
 	return {{ .Name.Pascal }}Response{Code: {{ .Name.Pascal }}OK}
 }

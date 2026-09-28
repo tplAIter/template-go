@@ -1,8 +1,8 @@
-// Package worker содержит Temporal-активности и workflow-заготовки сервиса.
+// Package worker contains the service's Temporal activities and workflow scaffolds.
 //
-// Конвенции монорепо (a standalone workflow activity): 1 сервис = 1 task queue; activity — тонкая
-// (вызывает use case, никакой бизнес-логики внутри); workflow — только
-// оркестрация (никакого IO); версионирование workflow — через workflow.GetVersion.
+// Monorepo conventions (a standalone workflow activity): one service = one task
+// queue; activities are thin (call a use case, with no business logic inside);
+// workflows only orchestrate (no IO); workflow versioning uses workflow.GetVersion.
 package worker
 
 import (
@@ -12,30 +12,30 @@ import (
 	"{{ .Project.Module }}/internal/usecase"
 )
 
-// CreateExampleInput — вход активности CreateExample.
+// CreateExampleInput — input for the CreateExample activity.
 type CreateExampleInput struct {
 	Name  string
 	Email string
 }
 
-// CreateExampleOutput — результат активности CreateExample.
+// CreateExampleOutput — result of the CreateExample activity.
 type CreateExampleOutput struct {
 	ID            string
 	AlreadyExists bool
 }
 
-// ExampleActivities — группа активностей вертикали Example.
+// ExampleActivities — activities for the Example vertical.
 type ExampleActivities struct {
 	createExample *usecase.CreateExampleUseCase
 }
 
-// NewExampleActivities собирает активности поверх use case'ов.
+// NewExampleActivities builds activities around the use cases.
 func NewExampleActivities(createExample *usecase.CreateExampleUseCase) *ExampleActivities {
 	return &ExampleActivities{createExample: createExample}
 }
 
-// CreateExample — тонкая активность: вызов use case + маппинг результата.
-// Ошибка активности отдаёт решение о повторе retry-политике workflow.
+// CreateExample — thin activity: call the use case and map the result.
+// An activity error lets the workflow retry policy decide whether to retry.
 func (a *ExampleActivities) CreateExample(ctx context.Context, in CreateExampleInput) (CreateExampleOutput, error) {
 	resp := a.createExample.Execute(ctx, usecase.CreateExampleRequest{
 		Name:  in.Name,

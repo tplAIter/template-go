@@ -43,10 +43,10 @@ type CreateExampleJSONRequestBody = CreateExampleRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Создать пример
+	// Create example
 	// (POST /api/v1/examples)
 	CreateExample(w http.ResponseWriter, r *http.Request)
-	// Проверка состояния сервиса
+	// Check service health
 	// (GET /healthcheck)
 	GetHealthcheck(w http.ResponseWriter, r *http.Request)
 }
@@ -315,10 +315,10 @@ func (response GetHealthcheck200JSONResponse) VisitGetHealthcheckResponse(w http
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Создать пример
+	// Create example
 	// (POST /api/v1/examples)
 	CreateExample(ctx context.Context, request CreateExampleRequestObject) (CreateExampleResponseObject, error)
-	// Проверка состояния сервиса
+	// Check service health
 	// (GET /healthcheck)
 	GetHealthcheck(ctx context.Context, request GetHealthcheckRequestObject) (GetHealthcheckResponseObject, error)
 }
