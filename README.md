@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tplAIter/.github/main/assets/banner.png" alt="tplAIter — Templates for the way you build." width="100%">
+  <img src="https://raw.githubusercontent.com/tplAIter/.github/main/assets/banner.png?v=20260928" alt="tplAIter — Build with blocks. Spend fewer tokens." width="100%">
 </p>
 
 <h1 align="center">template-go</h1>
@@ -11,6 +11,11 @@
 <p align="center"><a href="https://github.com/tplAIter/tplaiter">core CLI</a> · <a href="https://github.com/tplAIter/template-base">base template</a> · <a href="https://github.com/tplAIter/template-rust">Rust template</a> · <a href="https://github.com/tplAIter/tplaiter/blob/main/docs/template-validation.md">validation workflow</a></p>
 
 `template-go` provides a Go service layout rendered by Go's `text/template` engine. It covers service, repository, transport, worker, migration, OpenAPI, and observability assets; integration and lifecycle work is still in progress.
+
+In the intended MCP-assisted workflow, an agent selects the parameters and
+blocks it needs instead of retyping this boilerplate. The rendered result stays
+plain Go and can be checked, reviewed, and adapted locally. This preview does
+not claim that the live MCP or project lifecycle is complete.
 
 ## Capabilities
 
