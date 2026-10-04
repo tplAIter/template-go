@@ -1,0 +1,66 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"{{ .Project.Module }}/internal/config"
+{{ if .Settings.workflow }}
+	"{{ .Project.Module }}/internal/temporal"
+{{ end }}
+)
+
+func main() {
+	if err := run(); err != nil {
+		slog.Error("service failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() (runErr error) {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	cfg, err := config.Load()
+	if err != nil { return fmt.Errorf("load config: %w", err) }
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	// CODEGEN:ENTITY_WIRING
+
+{{ if .Settings.workflow }}
+	adapter := temporal.NewAdapter(cfg.Temporal, nil) // Explicitly empty registry.
+	defer func() {
+		cleanup, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		defer cancel()
+		runErr = errors.Join(runErr, adapter.Stop(cleanup))
+	}()
+	if err := adapter.Start(ctx); err != nil { return fmt.Errorf("start temporal: %w", err) }
+{{ end }}
+	server := &http.Server{
+		Addr: cfg.ListenAddr, Handler: mux,
+		ReadHeaderTimeout: cfg.ReadTimeout, ReadTimeout: cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout,
+		BaseContext: func(_ net.Listener) context.Context { return ctx },
+	}
+	defer server.Close()
+	serverErr := make(chan error, 1)
+	go func() { serverErr <- server.ListenAndServe() }()
+	select {
+	case err := <-serverErr:
+		if !errors.Is(err, http.ErrServerClosed) { return fmt.Errorf("http server: %w", err) }
+		return nil
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		defer cancel()
+		return server.Shutdown(shutdownCtx)
+	}
+}

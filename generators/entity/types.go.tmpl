@@ -1,0 +1,9 @@
+package {{ .Name.Snake }}
+
+import "errors"
+
+var ErrNotImplemented = errors.New("not implemented")
+
+// Entity is the parent type for the {{ .Name.Pascal }} vertical.
+// Keep this package independent from controller, service, and repository.
+type Entity struct { ID string }

@@ -1,0 +1,16 @@
+package repository
+
+import (
+	"context"
+
+	"{{ .Project.Module }}/internal/{{ .Name.Snake }}"
+)
+
+type Store struct{}
+
+func NewStore() *Store { return &Store{} }
+
+func (s *Store) Get(ctx context.Context, _ string) ({{ .Name.Snake }}.Entity, error) {
+	if err := ctx.Err(); err != nil { return {{ .Name.Snake }}.Entity{}, err }
+	return {{ .Name.Snake }}.Entity{}, {{ .Name.Snake }}.ErrNotImplemented
+}

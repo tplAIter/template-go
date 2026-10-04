@@ -1,0 +1,15 @@
+package main
+
+import (
+	"net/http"
+
+	"{{ .Project.Module }}/internal/{{ .Name.Snake }}/controller"
+	"{{ .Project.Module }}/internal/{{ .Name.Snake }}/repository"
+	"{{ .Project.Module }}/internal/{{ .Name.Snake }}/service"
+)
+
+func wire{{ .Name.Pascal }}(mux *http.ServeMux) {
+	store := repository.NewStore()
+	executor := service.NewExecutor(store)
+	mux.Handle("GET /api/v1/{{ .Name.Kebab }}/{id}", controller.NewHandler(executor))
+}

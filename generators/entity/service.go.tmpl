@@ -1,0 +1,24 @@
+package service
+
+import (
+	"context"
+
+	"{{ .Project.Module }}/internal/{{ .Name.Snake }}"
+)
+
+type Store interface {
+	Get(context.Context, string) ({{ .Name.Snake }}.Entity, error)
+}
+
+type Request struct { ID string }
+type Response struct { Entity {{ .Name.Snake }}.Entity }
+
+type Executor struct { store Store }
+
+func NewExecutor(store Store) *Executor { return &Executor{store: store} }
+
+func (e *Executor) Execute(ctx context.Context, req Request) (Response, error) {
+	entity, err := e.store.Get(ctx, req.ID)
+	if err != nil { return Response{}, err }
+	return Response{Entity: entity}, nil
+}

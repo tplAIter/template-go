@@ -1,0 +1,27 @@
+# {{ .Project.Name }}
+
+Run `go test ./...`, `go build ./...`, and `go run ./cmd/service`.
+Export the variables in .env.example to override typed local defaults.
+Dotenv files are not loaded automatically. /healthz returns 204.
+
+The service has no database, authentication, or business logic.
+Entity scaffolds use parent types plus controller, service, and repository
+packages, wired through explicit constructors in cmd/service.
+Repository placeholders return ErrNotImplemented and handlers return HTTP 501.
+
+{{ if .Settings.workflow }}
+Temporal SDK v1.29.1 is included. The registry is empty: startup does not
+connect, poll, or execute workflows. Explicit registrations activate the
+adapter. TEMPORAL_DIAL_TIMEOUT bounds the complete startup wait, including
+namespace lookup. Startup RPCs receive that deadline and cancellation. One
+owner serializes SDK Start, SDK Stop, and client close, including late completion.
+Temporal cleanup waits with a fresh APP_SHUTDOWN_TIMEOUT context after a
+signal or failure, separate from HTTP shutdown and its own timeout.
+That budget bounds the caller's wait; if it expires, the owner continues cleanup.
+TEMPORAL_WORKER_STOP_TIMEOUT is an SDK timeout per worker component. SDK v1.29.1
+stops local activity, workflow, and activity components sequentially, so the
+5s default can take 15s or more overall. It is not a total shutdown deadline.
+SDK Stop has no context argument; the client closes after SDK Stop completes.
+{{ else }}
+Temporal is disabled; the Go source uses only the standard library.
+{{ end }}

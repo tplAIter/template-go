@@ -8,33 +8,26 @@ engine:
   type: gotemplate
   root: files
 settings:
-  - group: database
-    title: Database
-    type: select
-    default: none
-    options:
-      - id: none
-        title: No database
-      - id: postgres
-        title: PostgreSQL
-  - group: brokers
-    title: Message brokers
-    type: multiselect
-    default: []
-    options:
-      - id: kafka
-        title: Kafka
-      - id: rabbitmq
-        title: RabbitMQ
-  - group: cache
-    title: Redis cache
-    type: toggle
-    default: false
-  - group: storage
-    title: Object storage
-    type: toggle
-    default: false
   - group: workflow
     title: Background workflows
     type: toggle
     default: false
+
+generators:
+  - kind: entity
+    description: Add a neutral entity vertical with manual dependency injection wiring.
+    targets:
+      - snippet: generators/entity/types.go.tmpl
+        target: internal/{{ .Name.Snake }}/types.go
+      - snippet: generators/entity/controller.go.tmpl
+        target: internal/{{ .Name.Snake }}/controller/controller.go
+      - snippet: generators/entity/service.go.tmpl
+        target: internal/{{ .Name.Snake }}/service/service.go
+      - snippet: generators/entity/repository.go.tmpl
+        target: internal/{{ .Name.Snake }}/repository/repository.go
+      - snippet: generators/entity/assembly.go.tmpl
+        target: cmd/service/{{ .Name.Snake }}.go
+    anchors:
+      - file: cmd/service/main.go
+        anchor: "// CODEGEN:ENTITY_WIRING"
+        insert: generators/entity/wiring.go.tmpl

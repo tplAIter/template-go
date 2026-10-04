@@ -1,2 +1,0 @@
-{{ .Marker }}
-	srv.Handle("POST /api/v1/{{ .Name.Kebab }}", httpapi.Protect(httpapi.New{{ .Name.Pascal }}Handler(logger), a.requireAuth))

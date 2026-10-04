@@ -1,0 +1,229 @@
+package temporal
+{{ if .Settings.workflow }}
+import (
+	"context"
+	"errors"
+	"io"
+	"net"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/client"
+	"go.temporal.io/api/workflowservice/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/test/bufconn"
+
+	"{{ .Project.Module }}/internal/config"
+)
+
+func stopAdapter(t *testing.T, a *Adapter) {
+	t.Helper()
+	cleanup, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := a.Stop(cleanup); err != nil { t.Fatal(err) }
+}
+
+type fakeClient struct { closed int }
+func (c *fakeClient) Close() error { c.closed++; return nil }
+type fakeWorker struct { startErr error; starts, stops int }
+func (w *fakeWorker) Start() error { w.starts++; return w.startErr }
+func (w *fakeWorker) Stop() { w.stops++ }
+
+func TestEmptyRegistryNeverDials(t *testing.T) {
+	a := NewAdapter(config.TemporalConfig{HostPort: "invalid::address"}, nil)
+	a.dial = func(context.Context) (io.Closer, lifecycle, error) {
+		t.Fatal("empty registry dialed")
+		return nil, nil, nil
+	}
+	if err := a.Start(context.Background()); err != nil { t.Fatal(err) }
+	stopAdapter(t, a)
+}
+
+func TestWorkerStartupFailureClosesClient(t *testing.T) {
+	failure := errors.New("worker startup failed")
+	c, w := &fakeClient{}, &fakeWorker{startErr: failure}
+	a := NewAdapter(config.TemporalConfig{DialTimeout: time.Second, WorkerStopTimeout: time.Second}, []Registration{func(worker.Worker){}})
+	a.dial = func(ctx context.Context) (io.Closer, lifecycle, error) {
+		if _, ok := ctx.Deadline(); !ok { t.Fatal("dial missing deadline") }
+		return c, w, nil
+	}
+	if err := a.Start(context.Background()); !errors.Is(err, failure) { t.Fatalf("error = %v", err) }
+	stopAdapter(t, a)
+	if c.closed != 1 || w.starts != 1 || w.stops != 0 {
+		t.Fatalf("cleanup: closed=%d starts=%d stops=%d", c.closed, w.starts, w.stops)
+	}
+}
+
+func TestCancellationClosesClientBeforeWorkerStarts(t *testing.T) {
+	c, w := &fakeClient{}, &fakeWorker{}
+	ctx, cancel := context.WithCancel(context.Background())
+	a := NewAdapter(config.TemporalConfig{DialTimeout: time.Second, WorkerStopTimeout: time.Second}, []Registration{func(worker.Worker){}})
+	a.dial = func(context.Context) (io.Closer, lifecycle, error) { cancel(); return c, w, nil }
+	if err := a.Start(ctx); !errors.Is(err, context.Canceled) { t.Fatalf("error = %v", err) }
+	stopAdapter(t, a)
+	if c.closed != 1 || w.starts != 0 { t.Fatalf("closed=%d starts=%d", c.closed, w.starts) }
+}
+
+func TestStopReleasesStartedWorkerAndClientOnce(t *testing.T) {
+	c, w := &fakeClient{}, &fakeWorker{}
+	a := NewAdapter(config.TemporalConfig{DialTimeout: time.Second, WorkerStopTimeout: time.Second}, []Registration{func(worker.Worker){}})
+	a.dial = func(context.Context) (io.Closer, lifecycle, error) { return c, w, nil }
+	if err := a.Start(context.Background()); err != nil { t.Fatal(err) }
+	stopAdapter(t, a)
+	stopAdapter(t, a)
+	if c.closed != 1 || w.stops != 1 { t.Fatalf("closed=%d stops=%d", c.closed, w.stops) }
+}
+
+// These tests run SDK v1.29.1 against an in-memory gRPC server, not a fake
+// context-aware worker. Namespace entry and release are explicit barriers.
+type namespaceServer struct {
+	workflowservice.UnimplementedWorkflowServiceServer
+	entered chan struct{}
+	release chan struct{}
+	canceled chan struct{}
+	once sync.Once
+	cancelOnce sync.Once
+	failure bool
+}
+func (s *namespaceServer) GetSystemInfo(context.Context, *workflowservice.GetSystemInfoRequest) (*workflowservice.GetSystemInfoResponse, error) {
+	return &workflowservice.GetSystemInfoResponse{}, nil
+}
+func (s *namespaceServer) DescribeNamespace(ctx context.Context, _ *workflowservice.DescribeNamespaceRequest) (*workflowservice.DescribeNamespaceResponse, error) {
+	s.once.Do(func(){ close(s.entered) })
+	if s.failure { return nil, status.Error(codes.NotFound, "namespace absent") }
+	select {
+	case <-s.release: return &workflowservice.DescribeNamespaceResponse{}, nil
+	case <-ctx.Done():
+		s.cancelOnce.Do(func(){ close(s.canceled) })
+		return nil, status.FromContextError(ctx.Err()).Err()
+	}
+}
+func (s *namespaceServer) PollWorkflowTaskQueue(ctx context.Context, _ *workflowservice.PollWorkflowTaskQueueRequest) (*workflowservice.PollWorkflowTaskQueueResponse, error) {
+	<-ctx.Done()
+	return nil, status.FromContextError(ctx.Err()).Err()
+}
+func (s *namespaceServer) PollActivityTaskQueue(ctx context.Context, _ *workflowservice.PollActivityTaskQueueRequest) (*workflowservice.PollActivityTaskQueueResponse, error) {
+	<-ctx.Done()
+	return nil, status.FromContextError(ctx.Err()).Err()
+}
+
+type quietLogger struct{}
+func (quietLogger) Debug(string, ...interface{}) {}
+func (quietLogger) Info(string, ...interface{}) {}
+func (quietLogger) Warn(string, ...interface{}) {}
+func (quietLogger) Error(string, ...interface{}) {}
+
+type observedClient struct { io.Closer; closes atomic.Int32 }
+func (c *observedClient) Close() error { c.closes.Add(1); return c.Closer.Close() }
+type observedWorker struct { lifecycle; stops atomic.Int32; result chan error }
+func (w *observedWorker) Start() error { err := w.lifecycle.Start(); w.result <- err; return err }
+func (w *observedWorker) Stop() { w.stops.Add(1); w.lifecycle.Stop() }
+
+func actualSDKAdapter(t *testing.T, timeout time.Duration, bindStartup, failure bool) (*Adapter, *namespaceServer, <-chan *observedClient, <-chan *observedWorker) {
+	t.Helper()
+	s := &namespaceServer{entered: make(chan struct{}), release: make(chan struct{}), canceled: make(chan struct{}), failure: failure}
+	listener := bufconn.Listen(1024 * 1024)
+	server := grpc.NewServer()
+	workflowservice.RegisterWorkflowServiceServer(server, s)
+	go server.Serve(listener)
+	t.Cleanup(func(){ server.Stop(); listener.Close() })
+	cfg := config.TemporalConfig{HostPort: "127.0.0.1:7233", Namespace: "default", TaskQueue: "test", DialTimeout: timeout, WorkerStopTimeout: 10*time.Millisecond}
+	a := NewAdapter(cfg, []Registration{func(worker.Worker){}})
+	clients, workers := make(chan *observedClient, 1), make(chan *observedWorker, 1)
+	a.dial = func(ctx context.Context) (io.Closer, lifecycle, error) {
+		starting := &atomic.Bool{}
+		starting.Store(true)
+		dialOpts := []grpc.DialOption{grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return listener.Dial() })}
+		if bindStartup { dialOpts = append(dialOpts, grpc.WithChainUnaryInterceptor(startupInterceptor(ctx, starting))) }
+		c, err := client.DialContext(ctx, client.Options{HostPort: cfg.HostPort, Namespace: cfg.Namespace, Logger: quietLogger{}, Identity: "templatecheck-test", ConnectionOptions: client.ConnectionOptions{DialOptions: dialOpts}})
+		if err != nil { return nil, nil, err }
+		owned := &observedClient{Closer: sdkClient{c}}
+		var life lifecycle = worker.New(c, cfg.TaskQueue, worker.Options{WorkerStopTimeout: cfg.WorkerStopTimeout})
+		if bindStartup { life = sdkWorker{life.(worker.Worker), starting} }
+		w := &observedWorker{lifecycle: life, result: make(chan error, 1)}
+		clients <- owned
+		workers <- w
+		return owned, w, nil
+	}
+	return a, s, clients, workers
+}
+
+func awaitNamespace(t *testing.T, s *namespaceServer, result <-chan error) {
+	t.Helper()
+	select { case <-s.entered: case err := <-result: t.Fatalf("startup ended before namespace lookup: %v", err); case <-time.After(2*time.Second): t.Fatal("SDK never entered namespace lookup") }
+}
+func awaitStart(t *testing.T, result <-chan error) error {
+	t.Helper()
+	select { case err := <-result: return err; case <-time.After(2*time.Second): t.Fatal("startup wait exceeded its budget"); return nil }
+}
+
+func TestActualSDKLateCancellationOwnsCleanup(t *testing.T) {
+	for _, mode := range []string{"parent cancellation", "deadline"} {
+		t.Run(mode, func(t *testing.T) {
+			// Deliberately omit the RPC interceptor to reproduce the SDK's background
+			// lookup and prove ownership survives a late successful Start.
+			timeout := 3*time.Second
+			if mode == "deadline" { timeout = 300*time.Millisecond }
+			a, s, clients, workers := actualSDKAdapter(t, timeout, false, false)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			result := make(chan error, 1)
+			go func(){ result <- a.Start(ctx) }()
+			awaitNamespace(t, s, result)
+			c, w := <-clients, <-workers
+			want := context.DeadlineExceeded
+			if mode == "parent cancellation" { cancel(); want = context.Canceled }
+			if err := awaitStart(t, result); !errors.Is(err, want) { t.Fatalf("Start = %v", err) }
+			cleanup, stopCancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+			defer stopCancel()
+			if err := a.Stop(cleanup); !errors.Is(err, context.DeadlineExceeded) { t.Fatalf("Stop while SDK Start is blocked = %v", err) }
+			if c.closes.Load() != 0 || w.stops.Load() != 0 { t.Fatal("cleanup raced SDK Start") }
+			close(s.release)
+			stopAdapter(t, a)
+			if err := <-w.result; err != nil { t.Fatalf("actual SDK late Start = %v", err) }
+			if c.closes.Load() != 1 || w.stops.Load() != 1 { t.Fatalf("late cleanup closes=%d stops=%d", c.closes.Load(), w.stops.Load()) }
+			t.Log("actual SDK late Start succeeded; canceled adapter Start failed; client closed once after worker Stop")
+			stopAdapter(t, a)
+			if c.closes.Load() != 1 || w.stops.Load() != 1 { t.Fatal("cleanup repeated") }
+		})
+	}
+}
+
+func TestActualSDKStartupRPCBudget(t *testing.T) {
+	for _, mode := range []string{"deadline", "parent cancellation"} {
+		t.Run(mode, func(t *testing.T) {
+			a, s, clients, workers := actualSDKAdapter(t, 300*time.Millisecond, true, false)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			result := make(chan error, 1)
+			go func(){ result <- a.Start(ctx) }()
+			awaitNamespace(t, s, result)
+			want := context.DeadlineExceeded
+			if mode == "parent cancellation" { cancel(); want = context.Canceled }
+			if err := awaitStart(t, result); !errors.Is(err, want) { t.Fatalf("Start = %v, want %v", err, want) }
+			stopAdapter(t, a) // Fresh context, independent of the canceled startup.
+			select { case <-s.canceled: case <-time.After(time.Second): t.Fatal("startup namespace RPC was not canceled") }
+			c, w := <-clients, <-workers
+			if err := <-w.result; err == nil { t.Fatal("SDK Start unexpectedly succeeded") }
+			if c.closes.Load() != 1 || w.stops.Load() != 0 { t.Fatalf("cleanup closes=%d stops=%d", c.closes.Load(), w.stops.Load()) }
+			t.Log("actual SDK namespace RPC canceled; fresh cleanup completed; client closed once")
+		})
+	}
+}
+
+func TestActualSDKNamespaceFailureClosesClient(t *testing.T) {
+	a, s, clients, workers := actualSDKAdapter(t, 2*time.Second, true, true)
+	result := make(chan error, 1)
+	go func(){ result <- a.Start(context.Background()) }()
+	awaitNamespace(t, s, result)
+	if err := awaitStart(t, result); err == nil { t.Fatal("namespace failure returned success") }
+	stopAdapter(t, a)
+	c, w := <-clients, <-workers
+	if c.closes.Load() != 1 || w.stops.Load() != 0 { t.Fatalf("cleanup closes=%d stops=%d", c.closes.Load(), w.stops.Load()) }
+}
+{{ end }}

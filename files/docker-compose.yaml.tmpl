@@ -8,21 +8,6 @@
 name: {{ .Project.Slug }}
 
 services:
-{{- if is "database" "postgres" }}
-{{ template "compose.postgresql" . }}
-{{- end }}
-{{- if .Settings.cache }}
-{{ template "compose.redis" . }}
-{{- end }}
-{{- if has "brokers" "kafka" }}
-{{ template "compose.kafka" . }}
-{{- end }}
-{{- if has "brokers" "rabbitmq" }}
-{{ template "compose.rabbitmq" . }}
-{{- end }}
-{{- if .Settings.storage }}
-{{ template "compose.minio" . }}
-{{- end }}
 {{- if .Settings.workflow }}
 {{ template "compose.temporal" . }}
 {{- end }}

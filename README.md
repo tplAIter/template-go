@@ -10,7 +10,7 @@
 
 <p align="center"><a href="https://github.com/tplAIter/tplaiter">core CLI</a> · <a href="https://github.com/tplAIter/template-base">base template</a> · <a href="https://github.com/tplAIter/template-rust">Rust template</a> · <a href="https://github.com/tplAIter/tplaiter/blob/main/docs/template-validation.md">validation workflow</a></p>
 
-`template-go` provides a Go service layout rendered by Go's `text/template` engine. It covers service, repository, transport, worker, migration, OpenAPI, and observability assets; integration and lifecycle work is still in progress.
+`template-go` provides a small Go service skeleton rendered by Go's `text/template` engine. It contains typed standard-library configuration, an explicit composition root, and a neutral entity generator that creates controller, service, and repository packages under a parent entity type.
 
 In the intended MCP-assisted workflow, an agent selects the parameters and
 blocks it needs instead of retyping this boilerplate. The rendered result stays
@@ -19,8 +19,9 @@ not claim that the live MCP or project lifecycle is complete.
 
 ## Capabilities
 
-- Manifest-driven settings for database, brokers, cache, object storage, and background workflows.
-- Service, repository, transport, worker, migration, OpenAPI, and observability render assets.
+- An `entity` generator with safe name-derived paths and manual dependency-injection wiring.
+- An optional Temporal adapter pinned to `go.temporal.io/sdk v1.29.1`. Its explicitly empty registry is idle: no dialing, polling, or automatic execution. Adding registrations enables a client and worker with finite dial and stop timeouts.
+- A standard-library-only default render with bounded HTTP timeouts and graceful shutdown.
 - A native template contract with no declared external dependencies.
 
 ## Verification
@@ -36,4 +37,4 @@ Those commands apply to each rendered fixture. The shared checker validates temp
 
 ## Status
 
-This is a local `0.0.0-local` preview. Further template validation and lifecycle integration are still in progress; this repository does not claim complete production readiness or a direct `new`/`update` workflow by itself.
+This is a local `0.0.0-local` preview. The core CLI's live generation path remains pending. Actual `gen.Generate` preflight regression coverage requires a core-owned checker interface; template checks do not claim live CLI generation coverage.

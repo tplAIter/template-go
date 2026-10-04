@@ -1,0 +1,170 @@
+// Package temporal owns the optional SDK client and worker lifecycle.
+package temporal
+{{ if .Settings.workflow }}
+import (
+	"context"
+	"fmt"
+	"io"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/worker"
+	"google.golang.org/grpc"
+
+	"{{ .Project.Module }}/internal/config"
+)
+
+// Registration is explicit. An empty registry never dials or polls.
+// Registrations must only register workflows/activities, never execute workflows.
+type Registration func(worker.Worker)
+
+type lifecycle interface {
+	Start() error
+	Stop()
+}
+
+type lifecycleRun struct {
+	stop chan struct{}
+	done chan struct{}
+	result chan error
+	stopOnce sync.Once
+}
+
+// Adapter is single-use. Its owner serializes SDK Start and Stop; Stop may be
+// called concurrently with Start and never invokes SDK Stop while Start runs.
+type Adapter struct {
+	cfg config.TemporalConfig
+	registry []Registration
+	dial func(context.Context) (io.Closer, lifecycle, error)
+	mu sync.Mutex
+	run *lifecycleRun
+}
+
+type sdkClient struct { client.Client }
+func (c sdkClient) Close() error { c.Client.Close(); return nil }
+
+type sdkWorker struct {
+	worker.Worker
+	starting *atomic.Bool
+}
+func (w sdkWorker) Start() error {
+	defer w.starting.Store(false)
+	return w.Worker.Start()
+}
+
+// SDK v1.29.1 starts namespace RPCs with context.Background. Bind startup RPCs
+// to our startup budget while preserving SDK cancellation and earlier deadlines.
+// After Start returns, polling RPCs use their own SDK contexts.
+func startupInterceptor(startup context.Context, starting *atomic.Bool) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoke grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		if !starting.Load() { return invoke(ctx, method, req, reply, cc, opts...) }
+		deadline, _ := startup.Deadline()
+		rpcCtx, cancel := context.WithDeadline(ctx, deadline)
+		defer cancel()
+		unlink := context.AfterFunc(startup, cancel)
+		defer unlink()
+		if err := startupError(startup); err != nil { return err }
+		return invoke(rpcCtx, method, req, reply, cc, opts...)
+	}
+}
+
+// RPC and context timers can report the same deadline in either order. Preserve
+// the public context error even when gRPC's deadline timer fires first.
+func startupError(ctx context.Context) error {
+	if err := ctx.Err(); err != nil { return err }
+	if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) { return context.DeadlineExceeded }
+	return nil
+}
+
+func NewAdapter(cfg config.TemporalConfig, registry []Registration) *Adapter {
+	a := &Adapter{cfg: cfg, registry: append([]Registration(nil), registry...)}
+	a.dial = func(ctx context.Context) (io.Closer, lifecycle, error) {
+		starting := &atomic.Bool{}
+		starting.Store(true)
+		c, err := client.DialContext(ctx, client.Options{
+			HostPort: cfg.HostPort, Namespace: cfg.Namespace,
+			ConnectionOptions: client.ConnectionOptions{DialOptions: []grpc.DialOption{
+				grpc.WithChainUnaryInterceptor(startupInterceptor(ctx, starting)),
+			}},
+		})
+		if err != nil { return nil, nil, err }
+		w := worker.New(c, cfg.TaskQueue, worker.Options{WorkerStopTimeout: cfg.WorkerStopTimeout})
+		for _, register := range a.registry { register(w) }
+		return sdkClient{c}, sdkWorker{w, starting}, nil
+	}
+	return a
+}
+
+// Start leaves the empty registry idle. DialTimeout bounds the entire startup
+// wait, including SDK Start. The owner cleans up even if SDK completion is late.
+func (a *Adapter) Start(ctx context.Context) error {
+	if err := ctx.Err(); err != nil { return err }
+	if len(a.registry) == 0 { return nil }
+	if a.cfg.DialTimeout <= 0 || a.cfg.WorkerStopTimeout <= 0 {
+		return fmt.Errorf("temporal lifecycle timeouts must be positive")
+	}
+	a.mu.Lock()
+	if a.run != nil { a.mu.Unlock(); return fmt.Errorf("temporal adapter already used") }
+	r := &lifecycleRun{stop: make(chan struct{}), done: make(chan struct{}), result: make(chan error)}
+	a.run = r
+	a.mu.Unlock()
+	startup, cancel := context.WithTimeout(ctx, a.cfg.DialTimeout)
+	defer cancel()
+	go a.own(startup, r)
+	select {
+	case err := <-r.result:
+		if ctxErr := startupError(startup); ctxErr != nil { r.stopOnce.Do(func(){ close(r.stop) }); return ctxErr }
+		return err
+	case <-startup.Done():
+		r.stopOnce.Do(func(){ close(r.stop) })
+		return startupError(startup)
+	case <-r.stop:
+		return context.Canceled
+	}
+}
+
+func (a *Adapter) own(startup context.Context, r *lifecycleRun) {
+	defer close(r.done)
+	c, w, err := a.dial(startup)
+	// Resources belong exclusively to this goroutine, including late dial results.
+	if c != nil { defer c.Close() }
+	if err != nil { err = fmt.Errorf("temporal client: %w", err) }
+	if err == nil { err = startupError(startup) }
+	if err == nil {
+		err = w.Start()
+		if err == nil { defer w.Stop() } else { err = fmt.Errorf("temporal worker: %w", err) }
+	}
+	if ctxErr := startupError(startup); ctxErr != nil { err = ctxErr }
+	select {
+	case r.result <- err:
+		if err == nil { <-r.stop }
+	case <-startup.Done():
+	case <-r.stop:
+	}
+}
+
+// Stop bounds the caller's wait with a fresh cleanup context. SDK Stop has no
+// context argument and its timeout is per component, not a whole-worker budget.
+// If this wait expires, the owner still stops a late successful Start and closes
+// the client after SDK Stop finishes. Repeated Stop calls wait for that same owner.
+func (a *Adapter) Stop(ctx context.Context) error {
+	a.mu.Lock()
+	r := a.run
+	a.mu.Unlock()
+	if r == nil { return nil }
+	r.stopOnce.Do(func(){ close(r.stop) })
+	select {
+	case <-r.done: return nil
+	default:
+	}
+	select {
+	case <-r.done: return nil
+	case <-ctx.Done(): return ctx.Err()
+	}
+}
+{{ else }}
+// SDK dependencies are excluded from the disabled render.
+type Adapter struct{}
+{{ end }}

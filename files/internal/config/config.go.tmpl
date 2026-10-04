@@ -1,0 +1,66 @@
+// Package config contains typed standard-library configuration for the service.
+package config
+
+import (
+	"fmt"
+	"os"
+	"time"
+)
+
+type Config struct {
+	ListenAddr      string
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
+	IdleTimeout     time.Duration
+	ShutdownTimeout time.Duration
+	Temporal        TemporalConfig
+}
+
+type TemporalConfig struct {
+	HostPort  string
+	Namespace string
+	TaskQueue string
+	DialTimeout time.Duration
+	WorkerStopTimeout time.Duration
+}
+
+func Load() (Config, error) {
+	readTimeout, err := duration("APP_READ_TIMEOUT", 5*time.Second)
+	if err != nil { return Config{}, err }
+	writeTimeout, err := duration("APP_WRITE_TIMEOUT", 10*time.Second)
+	if err != nil { return Config{}, err }
+	idleTimeout, err := duration("APP_IDLE_TIMEOUT", 60*time.Second)
+	if err != nil { return Config{}, err }
+	shutdownTimeout, err := duration("APP_SHUTDOWN_TIMEOUT", 10*time.Second)
+	if err != nil { return Config{}, err }
+	dialTimeout, err := duration("TEMPORAL_DIAL_TIMEOUT", 5*time.Second)
+	if err != nil { return Config{}, err }
+	workerStopTimeout, err := duration("TEMPORAL_WORKER_STOP_TIMEOUT", 5*time.Second)
+	if err != nil { return Config{}, err }
+	return Config{
+		ListenAddr: env("APP_LISTEN_ADDR", ":8080"),
+		ReadTimeout: readTimeout, WriteTimeout: writeTimeout,
+		IdleTimeout: idleTimeout, ShutdownTimeout: shutdownTimeout,
+		Temporal: TemporalConfig{
+			HostPort: env("TEMPORAL_HOSTPORT", "127.0.0.1:7233"),
+			Namespace: env("TEMPORAL_NAMESPACE", "default"),
+			TaskQueue: env("TEMPORAL_TASK_QUEUE", "service"),
+			DialTimeout: dialTimeout,
+			WorkerStopTimeout: workerStopTimeout,
+		},
+	}, nil
+}
+
+func env(key, fallback string) string {
+	if value := os.Getenv(key); value != "" { return value }
+	return fallback
+}
+
+func duration(key string, fallback time.Duration) (time.Duration, error) {
+	value := os.Getenv(key)
+	if value == "" { return fallback, nil }
+	parsed, err := time.ParseDuration(value)
+	if err != nil { return 0, fmt.Errorf("%s: %w", key, err) }
+	if parsed <= 0 { return 0, fmt.Errorf("%s must be positive", key) }
+	return parsed, nil
+}
