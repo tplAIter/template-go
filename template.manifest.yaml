@@ -31,3 +31,8 @@ generators:
       - file: cmd/service/main.go
         anchor: "// CODEGEN:ENTITY_WIRING"
         insert: generators/entity/wiring.go.tmpl
+
+commands:
+  build:
+    run: go build -mod=readonly -buildvcs=false ./...
+    description: Compile authenticated current Go inputs with an approved offline module closure

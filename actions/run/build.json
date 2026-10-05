@@ -1,0 +1,16 @@
+{
+  "apiVersion": "tplaiter.dev/project-build-action/v2",
+  "adapter": "go-project-build-v2",
+  "commandName": "build",
+  "argv": [
+    "go",
+    "build",
+    "-mod=readonly",
+    "-buildvcs=false",
+    "./..."
+  ],
+  "timeoutMillis": 120000,
+  "toolchainIndexSHA256": "sha256:3f87ae9030a30f7a31b58be227fe87b530e3b0c6bbf101bc6abcfb6be90640c4",
+  "moduleIndexSHA256": "sha256:ba7683fb14fff5a1996f6e99f5990780078598ecbfe7e1b905fb209275976c55",
+  "genBuild": true
+}

@@ -24,6 +24,32 @@ not claim that the live MCP or project lifecycle is complete.
 - A standard-library-only default render with bounded HTTP timeouts and graceful shutdown.
 - A native template contract with no declared external dependencies.
 
+## Native offline build scope
+
+The approved native offline CLI/MCP `run build` and default `gen`/`gen batch`
+build metadata supports **`workflow=true` only**, with the exact pinned module
+manifest, including `go.temporal.io/sdk v1.29.1`. Default generation commits its
+files only after the approved offline compiler succeeds. This bounded acceptance
+covers compilation; it does not establish Temporal client/worker execution or
+acceptance of every template variant or the full template lifecycle.
+
+**`workflow=false` is the template default and is unsupported by this v2 build
+metadata.** Native `run build` and default generation refuse with
+`TRUST_GO_MODULE_CLOSURE_UNAVAILABLE` before compiler execution; default generation
+refuses before applying files. There is no automatic dependency-free v1 fallback,
+ambient cache/toolchain fallback or online dependency resolution. Explicit
+`--no-build` requests file-only generation.
+
+The supported offline runner is **Darwin/arm64 with the authenticated, pinned
+Go 1.27.1 toolchain**. Other operating systems and architectures are unsupported
+and return a typed refusal; they are not covered by this acceptance.
+
+These restrictions concern tplAIter's approved native offline build metadata.
+The rendered Go code and manual `go test ./...` / `go build ./...` workflows remain
+unchanged. Published-source installed CLI/MCP replay against the exact public
+metadata commit is a separate completion requirement; the historical signed local
+metadata-overlay proof is not a published-metadata certificate.
+
 ## Verification
 
 The repository workflow runs on pushes, pull requests, and manual dispatch. It first uses the pinned core template-check action to validate the manifest and render every fixture combination. Each rendered Go project is then checked with:
@@ -37,4 +63,4 @@ Those commands apply to each rendered fixture. The shared checker validates temp
 
 ## Status
 
-This is a local `0.0.0-local` preview. The core CLI's live generation path remains pending. Actual `gen.Generate` preflight regression coverage requires a core-owned checker interface; template checks do not claim live CLI generation coverage.
+This is a local `0.0.0-local` preview. Native offline build/default generation acceptance is limited to the scope above; it is not whole-template or all-variant acceptance. Template checks do not claim live CLI generation coverage.
