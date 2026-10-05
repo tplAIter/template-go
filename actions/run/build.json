@@ -1,6 +1,6 @@
 {
-  "apiVersion": "tplaiter.dev/project-build-action/v2",
-  "adapter": "go-project-build-v2",
+  "apiVersion": "tplaiter.dev/project-build-action/v3",
+  "adapter": "go-project-build-v3",
   "commandName": "build",
   "argv": [
     "go",
@@ -11,6 +11,21 @@
   ],
   "timeoutMillis": 120000,
   "toolchainIndexSHA256": "sha256:3f87ae9030a30f7a31b58be227fe87b530e3b0c6bbf101bc6abcfb6be90640c4",
-  "moduleIndexSHA256": "sha256:ba7683fb14fff5a1996f6e99f5990780078598ecbfe7e1b905fb209275976c55",
-  "genBuild": true
+  "genBuild": true,
+  "selector": "workflow",
+  "variants": [
+    {
+      "id": "workflow-false",
+      "workflow": false,
+      "policy": "zero-external-modules",
+      "goModSHA256": "sha256:e2c5da1d127b8572bf06f52149ce5279aaf36805822835a92156923b5d61736a",
+      "goSumSHA256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "id": "workflow-true",
+      "workflow": true,
+      "policy": "module-closure",
+      "moduleIndexSHA256": "sha256:ba7683fb14fff5a1996f6e99f5990780078598ecbfe7e1b905fb209275976c55"
+    }
+  ]
 }

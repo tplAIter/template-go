@@ -26,19 +26,28 @@ not claim that the live MCP or project lifecycle is complete.
 
 ## Native offline build scope
 
-The approved native offline CLI/MCP `run build` and default `gen`/`gen batch`
-build metadata supports **`workflow=true` only**, with the exact pinned module
-manifest, including `go.temporal.io/sdk v1.29.1`. Default generation commits its
-files only after the approved offline compiler succeeds. This bounded acceptance
-covers compilation; it does not establish Temporal client/worker execution or
-acceptance of every template variant or the full template lifecycle.
+The v3 native offline CLI/MCP `run build` and default `gen`/`gen batch`
+build declaration selects exactly two authenticated cases from the project's
+explicit recorded `workflow` answer. `workflow=false` remains the default: its
+case pins the normalized default go.mod and exact go.sum and requires zero
+external modules. `workflow=true` retains the authenticated module closure,
+including `go.temporal.io/sdk v1.29.1`. The selected case and actual project bytes
+are bound to the signed request and reported in the process receipt. Default
+generation commits files only after the approved offline compiler succeeds.
 
-**`workflow=false` is the template default and is unsupported by this v2 build
-metadata.** Native `run build` and default generation refuse with
-`TRUST_GO_MODULE_CLOSURE_UNAVAILABLE` before compiler execution; default generation
-refuses before applying files. There is no automatic dependency-free v1 fallback,
-ambient cache/toolchain fallback or online dependency resolution. Explicit
+Missing/non-boolean answers, mismatched module/sum inputs, stale approvals and
+missing true-case CAS bytes refuse before compiler execution. Default generation
+refuses unavailable inputs before applying files. A true-case failure never
+selects the false case. There is no automatic v1 fallback, ambient cache/toolchain
+fallback or online dependency resolution. Existing replacement, exclusion,
+workspace, vendor, project embed and cgo restrictions remain. Explicit
 `--no-build` requests file-only generation.
+
+This bounded scope covers compilation; it does not establish Temporal
+client/worker execution, every template variant or the full template lifecycle.
+The historical published v2 metadata authorizes only `workflow=true`; its
+qualification is retained in the proof records. The v3 metadata and installed
+proof must be reviewed and replayed at their exact published commits separately.
 
 The supported offline runner is **Darwin/arm64 with the authenticated, pinned
 Go 1.27.1 toolchain**. Other operating systems and architectures are unsupported
