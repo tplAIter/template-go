@@ -3,7 +3,15 @@ kind: Template
 metadata:
   name: go-service
   version: 0.0.0-local
-  description: Go service template checkpoint with neutral retained render assets.
+  description: Go service with explicit manual dependency injection, an entity generator and optional Temporal workflows.
+  labels:
+    tags: ["go", "service", "manual-di", "entity", "temporal", "сервис", "сущность"]
+    lang: ["go"]
+    framework: ["temporal"]
+    candidate-kind: ["template"]
+    readiness: ["unknown"]
+    keywords: ["go", "service", "entity", "manual injection", "temporal", "workflow", "сервис", "сущность", "ручная инъекция", "воркфлоу"]
+    use-cases: ["Create a Go service", "Add entity", "Enable optional Temporal workflows", "Создать сервис Go", "Добавить сущность", "Добавить Temporal воркфлоу"]
 engine:
   type: gotemplate
   root: files
